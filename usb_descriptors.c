@@ -1,8 +1,8 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *                    rppicomidi
+ *               2022 rppicomidi
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,16 +81,16 @@ static void clone_string_cb(tuh_xfer_t* xfer)
       clone_state = CLONE_NEXT_DESCRIPTOR;
     }
     else {
-      printf("All strings for langid 0x%04x:\r\n", devstrings[langid_idx].langid);
+      TU_LOG2("All strings for langid 0x%04x:\r\n", devstrings[langid_idx].langid);
       for (uint8_t idx=0; idx < nstrings; idx++) {
         uint8_t length_string = (*((uint8_t*)(devstrings[langid_idx].string_list[idx])) - 2);
         char* cptr = (char*)(devstrings[langid_idx].string_list[idx])+2;
         for (uint8_t jdx=0; jdx < length_string; jdx++) {
           if (cptr[jdx]) {
-            printf("%c", cptr[jdx]);
+            TU_LOG2("%c", cptr[jdx]);
           }
         }
-        printf("\r\n");
+        TU_LOG2("\r\n");
       }
       if (++langid_idx < num_langids) {
         string_idx = 0;
@@ -98,7 +98,7 @@ static void clone_string_cb(tuh_xfer_t* xfer)
       }
       else {
         clone_state = CLONED;
-        printf("all strings cloned\r\n");
+        TU_LOG2("all strings cloned\r\n");
         if (device_clone_complete_cb) device_clone_complete_cb();
       }
     }
@@ -121,11 +121,11 @@ static void clone_langids_cb(tuh_xfer_t* xfer)
     num_langids = (xfer->actual_len - 2)/2;
     uint16_t* langids = (uint16_t*)(xfer->buffer+2);
     devstrings = calloc(num_langids, sizeof(uint16_t));
-    printf("num_langids=%u\r\n", num_langids);
+    TU_LOG2("num_langids=%u\r\n", num_langids);
     int idx;
     for (idx = 0; idx < num_langids; idx++) {
       devstrings[idx].langid = langids[idx];
-      printf("langid %u=0x%04x\r\n", idx, langids[idx]);
+      TU_LOG2("langid %u=0x%04x\r\n", idx, langids[idx]);
       devstrings[idx].string_list = calloc(nstrings, sizeof(*(devstrings[idx].string_list)));
     }
     if (nstrings > 0) {
@@ -184,7 +184,7 @@ void clone_descriptors(uint8_t dev_addr)
     }
     if (nmidi_strings > 0)
         memcpy(string_idx_list+string_idx, midi_string_idxs, nmidi_strings);
-    
+
     // Kick off the process of fetching all strings for all languages from the host-connected device
     string_idx = 0;
     langid_idx = 0;
@@ -200,14 +200,8 @@ void tuh_desc_device_cb(uint8_t dev_addr, const tusb_desc_device_t *desc)
 {
     daddr = dev_addr;        
     memcpy(&desc_device_connected, desc, sizeof(desc_device_connected));
-    printf("device descriptor cloned");
-    uint8_t* ptr = (uint8_t*)&desc_device_connected;
-    for (uint8_t idx=0; idx < sizeof(desc_device_connected); idx++) {
-      if ((idx % 16) == 0)
-        printf("\r\n");
-      printf("%02x ", *ptr++);
-    }
-    printf("\r\n");
+    TU_LOG2("device descriptor cloned\r\n");
+    TU_LOG2_MEM((uint8_t*)&desc_device_connected, sizeof(desc_device_connected), 2);
 }
 
 void tuh_desc_config_cb(uint8_t dev_addr, const tusb_desc_configuration_t *desc_config)
@@ -216,15 +210,9 @@ void tuh_desc_config_cb(uint8_t dev_addr, const tusb_desc_configuration_t *desc_
         desc_fs_configuration = malloc(desc_config->wTotalLength);
         if (desc_fs_configuration) {
             memcpy(desc_fs_configuration, desc_config, desc_config->wTotalLength);
-            printf("configuration descriptor cloned");
-            uint8_t* ptr = (uint8_t*)desc_fs_configuration;
-            for (uint8_t idx=0; idx < desc_config->wTotalLength; idx++) {
-              if ((idx % 16) == 0)
-                printf("\r\n");
-              printf("%02x ", *ptr++);
-            }
-            printf("\r\n");
-        }        
+            TU_LOG2("configuration descriptor cloned\r\n");
+            TU_LOG2_MEM((uint8_t*)desc_fs_configuration, desc_config->wTotalLength, 2);
+        }
     }
 }
 
@@ -232,7 +220,7 @@ void tuh_desc_config_cb(uint8_t dev_addr, const tusb_desc_configuration_t *desc_
 // Application return pointer to descriptor
 uint8_t const * tud_descriptor_device_cb(void)
 {
-  printf("midi device descriptor returned\r\n");
+  TU_LOG2("midi device descriptor returned\r\n");
   return (uint8_t const *) &desc_device_connected;
 }
 
@@ -251,7 +239,7 @@ uint8_t midid_get_endpoint0_size()
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 {
   (void) index; // for multiple configurations
-  printf("midi device configuration returned\r\n");
+  TU_LOG2("midi device configuration returned\r\n");
   return desc_fs_configuration;
 }
 

@@ -2,6 +2,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2021, Ha Thach (tinyusb.org)
+ *               2022 rppicomidi
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +25,15 @@
  */
 
 /**
- * This test program is designed to send and receive MIDI data concurrently
- * It send G, G#, A, A#, B over and over again on the highest cable number
- * of the MIDI device. The notes correspond to the Mackie Control transport
- * button LEDs, so most keyboards and controllers will react to these note
- * messages from the host. The host will print on the serial port console
- * any incoming messages along with the cable number that sent them.
- *
- * If you define MIDIH_TEST_KORG_NANOKONTROL2 to 1 and connect a Korg
- * nanoKONTROL2 controller to the host, then the host will request a dump
- * of the current scene, and the nanoKONTROL2 will respond with a long
- * sysex message (used to prove that sysex decoding appears to work)
+ * This program initializes pins GP1 and GP2 for use as a MIDI host port using
+ * the Pico-PIO-USB library. It then waits for a USB device to be attached.
+ * The software clones the USB descriptor of the attached USB device, and if
+ * it is a MIDI device, it will initialized the RP2040 USB port as a MIDI
+ * Device with the same descriptor as the attached device. It will transparently
+ * pass data between the attached upstream USB host and the downstream USB MIDI
+ * device. It will translate certain note messages from one note to another
+ * note to allow DAW control buttons messages from an Arturia Keylab Essential 88
+ * to work correctly with the Cubase DAW.
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -54,11 +53,7 @@
 //--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM DECLARATION
 //--------------------------------------------------------------------+
-#ifndef MIDIH_TEST_KORG_NANOKONTROL2
-#define MIDIH_TEST_KORG_NANOKONTROL2 0
-#endif
 
-#define MIDIH_TEST_KORG_NANOKONTROL2_COUNT 5
 //--------------------------------------------------------------------+
 // STATIC GLOBALS DECLARATION
 //--------------------------------------------------------------------+
@@ -66,23 +61,6 @@
 static const uint LED_PIN = PICO_DEFAULT_LED_PIN;
 #endif
 static uint8_t midi_dev_addr = 0;
-static uint8_t first_note = 0x5b; // Mackie Control rewind
-static uint8_t last_note = 0x5f; // Mackie Control stop
-static uint8_t message[6] =
-{
-  0x90, 0x5f, 0x00,
-  0x90, 0x5b, 0x7f,
-};
-#if MIDIH_TEST_KORG_NANOKONTROL2
-// This command will dump a scene from a Kork nanoKONTROL2 control surface
-// Use it to test receiving long sysex messages
-static uint8_t nanoKONTROL2_dump_req[] = 
-{
-  0xf0, 0x42, 0x40, 0x00, 0x01, 0x13, 0x00, 0x1f, 0x10, 0x00, 0xf7
-};
-// wait MIDIH_TEST_KORG_NANOKONTROL2_COUNT seconds before requesting a dump
-static uint8_t dump_req_countdown = MIDIH_TEST_KORG_NANOKONTROL2_COUNT; 
-#endif
 
 static void poll_midi_dev_rx(bool connected)
 {
@@ -98,73 +76,7 @@ static void poll_midi_dev_rx(bool connected)
     tuh_midi_packet_write(midi_dev_addr, packet);
   }
 }
-#if 0
-static void test_tx(void)
-{
-  // toggle NOTE On, Note Off for the Mackie Control channels 1-8 REC LED
-  const uint32_t interval_ms = 1000;
-  static uint32_t start_ms = 0;
 
-  // device must be attached and have at least one endpoint ready to receive a message
-  if (!midi_dev_addr || !tuh_midi_configured(midi_dev_addr))
-  {
-    return;
-  }
-  if (tuh_midih_get_num_tx_cables(midi_dev_addr) < 1)
-  {
-    return;
-  }
-  // transmit any previously queued bytes
-  tuh_midi_stream_flush(midi_dev_addr);
-  // Blink every interval ms
-  if ( board_millis() - start_ms < interval_ms)
-  {
-    return; // not enough time
-  }
-  start_ms += interval_ms;
-
-  uint32_t nwritten = 0;
-#if MIDIH_TEST_KORG_NANOKONTROL2
-  if (dump_req_countdown == 0)
-  {
-    nwritten = tuh_midi_stream_write(midi_dev_addr, 0, nanoKONTROL2_dump_req, sizeof(nanoKONTROL2_dump_req));
-    if (nwritten != sizeof(nanoKONTROL2_dump_req))
-    {
-      _MESS_FAILED();
-      TU_BREAKPOINT();
-    }
-    dump_req_countdown = MIDIH_TEST_KORG_NANOKONTROL2_COUNT;
-  }
-  else
-  {
-    nwritten = 0;
-    nwritten += tuh_midi_stream_write(midi_dev_addr, 0, message, sizeof(message));
-    --dump_req_countdown;
-  }
-#else
-  uint8_t cable = tuh_midih_get_num_tx_cables(midi_dev_addr) - 1;
-  nwritten = 0;
-  /// @bug For some reason, Arturia Keylab-88 ignores these messages if
-  /// they are transimitted on cable 0 first
-  //for (cable = 0; cable < tuh_midih_get_num_tx_cables(midi_dev_addr); cable++)
-    nwritten += tuh_midi_stream_write(midi_dev_addr, cable, message, sizeof(message));
-#endif
- 
-#if MIDIH_TEST_KORG_NANOKONTROL2
-  if (nwritten != 0 && dump_req_countdown != MIDIH_TEST_KORG_NANOKONTROL2_COUNT)
-#else
-  if (nwritten != 0)
-#endif
-  {
-    ++message[1];
-    ++message[4];
-    if (message[1] > last_note)
-      message[1] = first_note;
-    if (message[4] > last_note)
-      message[4] = first_note;
-  }
-}
-#endif
 static void poll_midi_host_rx(void)
 {
   // device must be attached and have at least one endpoint ready to receive a message
@@ -184,7 +96,7 @@ static void midi_host_app_task(void)
   if (cloning_is_required()) {
     if (midi_dev_addr != 0) {
       clone_descriptors(midi_dev_addr);
-      printf("start descriptor cloning\r\n");
+      TU_LOG1("start descriptor cloning\r\n");
     }
   }
   else if (clone_next_string_is_required()) {
@@ -207,13 +119,9 @@ static void midi_host_app_task(void)
 // therefore report_desc = NULL, desc_len = 0
 void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)
 {
-  printf("MIDI device address = %u, IN endpoint %u has %u cables, OUT endpoint %u has %u cables\r\n",
+  TU_LOG1("MIDI device address = %u, IN endpoint %u has %u cables, OUT endpoint %u has %u cables\r\n",
       dev_addr, in_ep & 0xf, num_cables_rx, out_ep & 0xf, num_cables_tx);
-  message[1] = last_note;
-  message[4] = first_note;
-#if MIDIH_TEST_KORG_NANOKONTROL2
-  dump_req_countdown = MIDIH_TEST_KORG_NANOKONTROL2_COUNT;
-#endif
+
   midi_dev_addr = dev_addr;
   set_cloning_required();
 }
@@ -223,7 +131,7 @@ void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)
 {
   midi_dev_addr = 0;
   set_descriptors_uncloned();
-  printf("MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
+  TU_LOG1("MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
 }
 
 void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
@@ -295,13 +203,13 @@ int main(void) {
   gpio_init(LED_PIN);
   gpio_set_dir(LED_PIN, GPIO_OUT);
 #endif
-  printf("pico-usb-midi-filter\r\n");
+  TU_LOG1("pico-usb-midi-filter\r\n");
 
   while (1)
   {
     if (midi_device_status == MIDI_DEVICE_NEEDS_INIT) {
       tud_init(0);
-      printf("MIDI device initialized\r\n");
+      TU_LOG1("MIDI device initialized\r\n");
       midi_device_status = MIDI_DEVICE_IS_INITIALIZED;
     }
     else if (midi_device_status == MIDI_DEVICE_IS_INITIALIZED) {
