@@ -1,11 +1,17 @@
-# pico-usb-midi-in-the-middle
+# pico-usb-midi-filter
 
 ## Description
 This project uses the Raspberry Pi Pico built-in USB port and an additional USB port created from the PIOs
-to make a man-in-the-middle MIDI filter. This program demonstrates translating some
+to make a MIDI data filter. You plug the PC into the Raspberry Pi Pico's MicroUSB port. You plug your
+MIDI keyboard or other MIDI device into the added USB Host port. The USB Host port enumerates your MIDI device
+and then initializes the Pico's USB Device port so it looks to your PC just the same as the downstreams
+USB device. Because the Pico now sits between your PC and your MIDI device, it can maniputlate the MIDI
+data stream to filter it as required.
+
+This program demonstrates translating some
 Mackie Control protocol button messages from the Arturia Keylay Essential 88 to other Mackie Control protocol
 button messages so that they work correctly with the Cubase DAW. However, the code is
-structured so that it may be modified to perform just about any other man-in-the-middle
+structured so that it may be modified to perform just about any other
 filtering. That is, this code should serve as a reasonable starting point for other more sophisticated processing such as
 
 - Removing MIDI clock or Activie Sensing messages
@@ -15,18 +21,23 @@ filtering. That is, this code should serve as a reasonable starting point for ot
 - Changing MIDI channel for notes in a range (to perform keyboard split, for example).
 - etc.
 
-This project requires correctly soldering a USB host port connector to a Raspberry Pi Pico board. The circuit described here has no current limiting, ESD protection, or other safeguards. Measure voltages carefully and
-please don't hook this to your expensive computer and MIDI equipment until you have done some testing with at least some basic test equipment.
+This project requires correctly soldering a USB host port connector to a Raspberry Pi Pico board. 
+The circuit described here has no current limiting, ESD protection, or other safeguards. Measure voltages carefully and
+please don't hook this to your expensive computer and MIDI equipment until you have done some testing with at least
+some basic test equipment.
 
 Also, any brand name stuff I mention in this README file is just documentation of what I did.
 This is not an advertisement. I don't get paid to do this.
 
+This project would not have been possible without the code of the tinyusb project and the
+Pico-PIO-USB project. Thank you to the developers for publishing the source on github.
+
 ## Hardware
 
 This project uses the built-in USB port as the USB downstream MIDI device port (connects to a
-PC's USB host port or an upstream USB hub port). It uses two GPIO pins, both PIOs and one of
+PC's USB host port or an upstream USB hub port). It also uses two GPIO pins, both PIOs and one of
 the ARM cores of the Pico's RP2040 chip to create an upstream USB MIDI host port (connects
-to your MIDI keyboard or other MIDI device). The Pico board gets power from the PC host port
+to your MIDI keyboard or other MIDI device). The Pico board and the MIDI device get power from the PC host port
 or upstream USB hub. Because this project uses the on-board USB for MIDI, it can't use it for
 stdio debug prints. This project uses UART0 on pins GP16 (Pico Board pin 21) and GP17 (Pico Board
 pin 22) for the stdio debug UART. If your project needs the debug UART pins for something else, please
@@ -75,7 +86,8 @@ chip on an off-the-shelf Raspberry Pi Pico board.
 ## Software
 
 This project relies on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk).
-Because the TinyUSB library does not yet support a MIDI host port in the mainline, you
+Because the TinyUSB library does not yet support a MIDI host port in the mainline, and because
+it does not have hooks to support device descriptor cloning, you
 need to use my fork of the [tinyusb](https://github.com/hathach/tinyusb) project and
 check out the pio-midihost branch. Fortunately, the TinyUSB library already incorporates
 the [Pico-PIO-USB](https://github.c/sekigon-gonnoc/Pico-PIO-USB) project as a library
@@ -90,10 +102,10 @@ document for instructions. You will need the `git` command line utility plus oth
 development tools.
 
 ### Install the project software
-Set your current directory to something appropriate (e.g. $HOME/projects) and then clone the pico-usb-midi-in-the-middle project:
+Set your current directory to something appropriate (e.g. $HOME/projects) and then clone the pico-usb-midi-filter project:
 
 ```
-git clone https://github.com/rppicomidi/pico-usb-midi-in-the-middle.git
+git clone https://github.com/rppicomidi/pico-usb-midi-filter.git
 ```
 
 ### Installing the forked tinyusb library
@@ -135,15 +147,17 @@ git submodule update --init Pico-PIO-USB
 
 The command line build process is pretty common for most Pico projects.
 ```
-cd [the parent directory where you cloned this project]/pico-usb-midi-in-the-middle
+cd [the parent directory where you cloned this project]/pico-usb-midi-filter
 mkdir build
 cd build
 cmake ..
 make
 ```
-This process should generate the file `pico-usb-midi-in-the-middle\build\pico-usb-midi-in-the-middle.uf2`. Connect a USB cable to your PC. Do not connect it to your Pico board yet. Hold the BOOTSEL button on your Pico board and plug the cable to your Pico board's microUSB
+This process should generate the file `pico-usb-midi-filter\build\pico-usb-midi-filter.uf2`.
+Connect a USB cable to your PC. Do not connect it to your Pico board yet.
+Hold the BOOTSEL button on your Pico board and plug the cable to your Pico board's microUSB
 connector. The Pico should automount on your computer. Use the PC file manager to drag and
-drop the ``pico-usb-midi-in-the-middle.uf2` file to the Pico "file system". The Pico should
+drop the ``pico-usb-midi-filter.uf2` file to the Pico "file system". The Pico should
 automatically unmount when the file copy is complete.
 
 ### Building and debugging using VS Code
