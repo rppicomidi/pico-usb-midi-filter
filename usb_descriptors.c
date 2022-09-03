@@ -171,6 +171,7 @@ void clone_descriptors(uint8_t dev_addr)
     if (desc_device_connected.iSerialNumber != 0) {
         ++nstrings;
     }
+
     string_idx_list = malloc(nstrings);
     string_idx = 0;
     if (desc_device_connected.iManufacturer != 0) {
@@ -185,6 +186,8 @@ void clone_descriptors(uint8_t dev_addr)
     if (nmidi_strings > 0)
         memcpy(string_idx_list+string_idx, midi_string_idxs, nmidi_strings);
 
+    TU_LOG2("All %u string indices\n", string_idx+nmidi_strings);
+    TU_LOG2_MEM(string_idx_list, string_idx+nmidi_strings, 2);
     // Kick off the process of fetching all strings for all languages from the host-connected device
     string_idx = 0;
     langid_idx = 0;

@@ -17,6 +17,8 @@ pico_generate_pio_header(${target_name} ${PICO_PIO_USB_SRC}/usb_rx.pio)
 target_sources(${target_name} PRIVATE
  midi_app.c
  usb_descriptors.c
+ keylab_essential_mc_filter.c
+ midi_mc_fader_pickup.c
  ${PICO_PIO_USB_SRC}/pio_usb.c
  ${PICO_PIO_USB_SRC}/pio_usb_device.c
  ${PICO_PIO_USB_SRC}/pio_usb_host.c

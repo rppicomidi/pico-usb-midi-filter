@@ -50,6 +50,7 @@
 #include "class/midi/midi_host.h"
 #include "class/midi/midi_device.h"
 #include "usb_descriptors.h"
+#include "midi_filter.h"
 //--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM DECLARATION
 //--------------------------------------------------------------------+
@@ -72,8 +73,8 @@ static void poll_midi_dev_rx(bool connected)
   uint8_t packet[4];
   while (tud_midi_packet_read(packet))
   {
-    // TODO filter the packet if need be
-    tuh_midi_packet_write(midi_dev_addr, packet);
+    if (filter_midi_out(packet))
+      tuh_midi_packet_write(midi_dev_addr, packet);
   }
 }
 
@@ -95,8 +96,8 @@ static void midi_host_app_task(void)
 {
   if (cloning_is_required()) {
     if (midi_dev_addr != 0) {
-      clone_descriptors(midi_dev_addr);
       TU_LOG1("start descriptor cloning\r\n");
+      clone_descriptors(midi_dev_addr);
     }
   }
   else if (clone_next_string_is_required()) {
@@ -144,8 +145,8 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
       uint8_t packet[4];
       if (tuh_midi_packet_read(dev_addr, packet))
       {
-        // TODO insert packet filter here
-        tud_midi_packet_write(packet);
+        if (filter_midi_in(packet))
+          tud_midi_packet_write(packet);
       }
     }
   }
@@ -204,7 +205,7 @@ int main(void) {
   gpio_set_dir(LED_PIN, GPIO_OUT);
 #endif
   TU_LOG1("pico-usb-midi-filter\r\n");
-
+  filter_midi_init();
   while (1)
   {
     if (midi_device_status == MIDI_DEVICE_NEEDS_INIT) {

@@ -21,6 +21,7 @@
     "cortex-debug.variableUseNaturalFormat": false,
     "files.associations": {
         "limits": "c",
-        "new": "c"
+        "new": "c",
+        "midi_filter.h": "c"
     }
 }
