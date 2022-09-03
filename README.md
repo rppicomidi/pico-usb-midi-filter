@@ -4,11 +4,11 @@
 This project uses the Raspberry Pi Pico built-in USB port and an additional USB port created from the PIOs
 to make a MIDI data filter. You plug the PC into the Raspberry Pi Pico's MicroUSB port. You plug your
 MIDI keyboard or other MIDI device into the added USB Host port. The added USB Host port enumerates your MIDI device
-and then initializes the Pico's USB Device port so it looks to your PC just the same as the downstreams
+and then initializes the Pico's USB Device port so it looks to your PC just the same as the downstream
 USB device. Because the Pico now sits between your PC and your MIDI device, it can maniputlate the MIDI
 data stream to filter it as required.
 
-This program demonstrates demostrates translating some
+This program demostrates translating some
 Mackie Control protocol button messages from the Arturia Keylab Essential 88 to other Mackie Control protocol
 button messages so that they work correctly with the Cubase DAW, and it demostrates Mackie Control fader pickup (because
 it seems Arturia Keylab Essential only supports pickup with HUI. See the [FAQ](https://support.arturia.com/hc/en-us/articles/4405741358738-KeyLab-Essential-Tips-Tricks)). However, the code is
@@ -54,7 +54,15 @@ a wire from that pin hanging off the edge of the board to Pin 40 of the Pico boa
 plugged the 4-pin female header connector so the black wire (ground) connects to Pin 3 of the Pico
 board, the red wire connects to pin hanging off the edge of the Pico board, the green wire connects
 to pin 1 of the Pico board, and the white wire connects to pin 2 of the Pico board. If you want to
-add series termination resistors to D+ and D-, resistors between 22 and 33 ohms are probably close. I didn't bother and it seemed good enough for my testing. Here are photos of the bottom view ![](pictures/pico-usb-midi-filter-bottom-view.jpg) and the top view ![](pictures/pico-usb-midi-filter-top-view.jpg) of how I wired the USB host cable.
+add series termination resistors to D+ and D-, resistors between 22 and 33 ohms are probably close. I didn't bother and it seemed good enough for my testing.
+
+Here is a photo of the bottom view wiring.  
+
+![](pictures/pico-usb-midi-filter-bottom-view.jpg)
+
+Here is a photo of the top view wiring.  
+
+![](pictures/pico-usb-midi-filter-top-view.jpg)   
 
 ### Wiring for a Pico Probe
 I like to use a Pico Probe (see Appendix A of the [Getting Started with
@@ -64,7 +72,11 @@ for code development in a Microsoft Visual Studio Code IDE. I soldered in a 3-pi
 21 and 22 (GPIO pins GP16 and GP17) for the debug UART. I wired the GND, SWCLK and SWDIO as shown
 in the Appendix. However, because I used Pico board pins 1 and 2 for the USB host, I had to wire
 the debug UART to different pins. Connect the Pico A UART 1 Rx on Pico A pin 7 to Pico B UART0 Tx signal on Pico B
-Pin 21 (not 1). Connect the Pico A UART Tx on Pico A pin 6 and the Pico B UART0 Rx signal to target Pico board pin 22 (not 2). Here is a photo of my complete setup with the Pico Probe attached. The Pico Probe board is the lower Pico board. ![](pictures/pico-usb-midi-filter-with-picoprobe.jpg)
+Pin 21 (not 1). Connect the Pico A UART Tx on Pico A pin 6 and the Pico B UART0 Rx signal to target Pico board pin 22 (not 2).
+
+Here is a photo of my complete setup with the Pico Probe attached. The Pico Probe board is the lower Pico board.
+
+![](pictures/pico-usb-midi-filter-with-picoprobe.jpg)
 
 ### This is not commercial quality hardware
 The USB host port hardware created from the PIO is not compliant
@@ -87,11 +99,12 @@ chip on an off-the-shelf Raspberry Pi Pico board.
 
 ## Software
 
-This project relies on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk).
-Because the TinyUSB library does not yet support a MIDI host port in the mainline, and because
+This project relies on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk), which
+includes the tinyusb library.
+Because the tinyusb library does not yet support a MIDI host port in the mainline, and because
 it does not have hooks to support device descriptor cloning, you
 need to use my fork of the [tinyusb](https://github.com/hathach/tinyusb) project and
-check out the pio-midihost branch. Fortunately, the TinyUSB library already incorporates
+check out the `pio-midihost` branch. Fortunately, the tinyusb library already incorporates
 the [Pico-PIO-USB](https://github.c/sekigon-gonnoc/Pico-PIO-USB) project as a library
 submodule. All instructions below assume that you are using a Linux command line environment
 or similar.
@@ -104,16 +117,18 @@ document for instructions. You will need the `git` command line utility plus oth
 development tools.
 
 ### Install the project software
-Set your current directory to something appropriate (e.g. $HOME/projects) and then clone the pico-usb-midi-filter project:
+Set your current directory to something appropriate (e.g. $HOME/projects/pico) and then clone the pico-usb-midi-filter project:
 
 ```
+cd $HOME/projects/pico
 git clone https://github.com/rppicomidi/pico-usb-midi-filter.git
 ```
 
 ### Installing the forked tinyusb library
 
 The Pico SDK uses the main repository for tinyusb as a git submodule. Until the USB Host driver for MIDI is
-incorporated in the main repository for tinyusb, you will need to use my forked version. This is how I do it.
+incorporated in the main repository for tinyusb, you will need to use my forked version. This is how I do it. The
+instructions have been tested for the case of installing the Pico SDK in `$HOME/projects/pico/pico-sdk`.
 
 1. If you have not already done so, follow the instructions for installing the Raspberry Pi Pico SDK in Chapter 2 of the 
 [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf)
