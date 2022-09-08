@@ -172,7 +172,7 @@ cd build
 cmake ..
 make
 ```
-This process should generate the file `pico-usb-midi-filter\build\pico-usb-midi-filter.uf2`.
+This process should generate the file `pico-usb-midi-filter\build\midi_app.uf2`.
 Connect a USB cable to your PC. Do not connect it to your Pico board yet.
 Hold the BOOTSEL button on your Pico board and plug the cable to your Pico board's microUSB
 connector. The Pico should automount on your computer. Use the PC file manager to drag and

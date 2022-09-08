@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 include (pico_sdk_import.cmake)
-project(pico_usb_midi_in_the_middle)
+project(pico_usb_midi_filter)
 
 pico_sdk_init()
 
