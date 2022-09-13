@@ -105,7 +105,7 @@ Because the tinyusb library does not yet support a MIDI host port in the mainlin
 it does not have hooks to support device descriptor cloning, you
 need to use my fork of the [tinyusb](https://github.com/hathach/tinyusb) project and
 check out the `pio-midihost` branch. Fortunately, the tinyusb library already incorporates
-the [Pico-PIO-USB](https://github.c/sekigon-gonnoc/Pico-PIO-USB) project as a library
+the [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) project as a library
 submodule. All instructions below assume that you are using a Linux command line environment
 or similar.
 
