@@ -120,6 +120,10 @@ static void midi_host_app_task(void)
 // therefore report_desc = NULL, desc_len = 0
 void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)
 {
+  (void)in_ep;
+  (void)out_ep;
+  (void)num_cables_rx;
+  (void)num_cables_tx;
   TU_LOG1("MIDI device address = %u, IN endpoint %u has %u cables, OUT endpoint %u has %u cables\r\n",
       dev_addr, in_ep & 0xf, num_cables_rx, out_ep & 0xf, num_cables_tx);
 
@@ -130,6 +134,8 @@ void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t 
 // Invoked when device with hid interface is un-mounted
 void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)
 {
+  (void)dev_addr;
+  (void)instance;
   midi_dev_addr = 0;
   set_descriptors_uncloned();
   TU_LOG1("MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
