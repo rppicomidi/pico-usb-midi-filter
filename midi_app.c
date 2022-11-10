@@ -143,7 +143,7 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
     {
       --num_packets;
       uint8_t packet[4];
-      if (tuh_midi_packet_read(dev_addr, packet))
+      while (tuh_midi_packet_read(dev_addr, packet))
       {
         if (filter_midi_in(packet))
           tud_midi_packet_write(packet);
