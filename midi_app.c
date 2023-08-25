@@ -42,12 +42,13 @@
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/bootrom.h"
+#include "hardware/watchdog.h"
 
 #include "pio_usb.h"
 
 #include "tusb.h"
-#include "bsp/board.h"
-#include "class/midi/midi_host.h"
+#include "bsp/board_api.h"
+#include "usb_midi_host.h"
 #include "class/midi/midi_device.h"
 #include "usb_descriptors.h"
 #include "midi_filter.h"
@@ -58,9 +59,6 @@
 //--------------------------------------------------------------------+
 // STATIC GLOBALS DECLARATION
 //--------------------------------------------------------------------+
-#ifdef PICO_DEFAULT_LED_PIN
-static const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-#endif
 static uint8_t midi_dev_addr = 0;
 
 static void poll_midi_dev_rx(bool connected)
@@ -78,33 +76,18 @@ static void poll_midi_dev_rx(bool connected)
   }
 }
 
-static void poll_midi_host_rx(void)
-{
-  // device must be attached and have at least one endpoint ready to receive a message
-  if (!midi_dev_addr || !tuh_midi_configured(midi_dev_addr))
-  {
-    return;
-  }
-  if (tuh_midih_get_num_rx_cables(midi_dev_addr) < 1)
-  {
-    return;
-  }
-  tuh_midi_read_poll(midi_dev_addr); // if there is data, then the callback will be called
-}
-
 static void midi_host_app_task(void)
 {
   if (cloning_is_required()) {
-    if (midi_dev_addr != 0) {
-      TU_LOG1("start descriptor cloning\r\n");
-      clone_descriptors(midi_dev_addr);
+    if (midi_dev_addr != 0 && tuh_midi_configured(midi_dev_addr)) {
+      TU_LOG2("start descriptor cloning\r\n");
+      start_cloning(midi_dev_addr);
     }
   }
   else if (clone_next_string_is_required()) {
     clone_next_string();
   }
   else if (descriptors_are_cloned()) {
-    poll_midi_host_rx();
     tuh_midi_stream_flush(midi_dev_addr);
   }
 }
@@ -124,7 +107,7 @@ void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t 
   (void)out_ep;
   (void)num_cables_rx;
   (void)num_cables_tx;
-  TU_LOG1("MIDI device address = %u, IN endpoint %u has %u cables, OUT endpoint %u has %u cables\r\n",
+  TU_LOG1("Attached MIDI device addr=%u, IN EPT=%u has %u cables, OUT EPT=%u has %u cables\r\n",
       dev_addr, in_ep & 0xf, num_cables_rx, out_ep & 0xf, num_cables_tx);
 
   midi_dev_addr = dev_addr;
@@ -139,6 +122,7 @@ void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)
   midi_dev_addr = 0;
   set_descriptors_uncloned();
   TU_LOG1("MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
+  watchdog_reboot(0,0,10); // wait 10 ms and then reboot
 }
 
 void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
@@ -171,14 +155,9 @@ static void led_blinking_task(void);
 void core1_main() {
   sleep_ms(10);
 
-  // Use tuh_configure() to pass pio configuration to the host stack
-  // Note: tuh_configure() must be called before
-  pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-  tuh_configure(1, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
-
   // To run USB SOF interrupt in core1, init host stack for pio_usb (roothub
   // port1) on core1
-  tuh_init(1);
+  tuh_init(BOARD_TUH_RHPORT);
 
   while (true) {
     tuh_task(); // tinyusb host task
@@ -200,16 +179,12 @@ int main(void) {
   sleep_ms(10);
 
   // direct printf to UART
-  stdio_init_all();
+  board_init();
 
   multicore_reset_core1();
   // all USB task run in core1
   multicore_launch_core1(core1_main);
 
-#ifdef PICO_DEFAULT_LED_PIN
-  gpio_init(LED_PIN);
-  gpio_set_dir(LED_PIN, GPIO_OUT);
-#endif
   TU_LOG1("pico-usb-midi-filter\r\n");
   filter_midi_init();
   while (1)
@@ -241,10 +216,6 @@ int main(void) {
 
 static void led_blinking_task(void)
 {
-#ifndef PICO_DEFAULT_LED_PIN
-#warning led_blinking_task requires a board with a regular LED
-#else
-
   const uint32_t interval_ms = 1000;
   static uint32_t start_ms = 0;
 
@@ -254,7 +225,6 @@ static void led_blinking_task(void)
   if ( board_millis() - start_ms < interval_ms) return; // not enough time
   start_ms += interval_ms;
 
-  gpio_put(LED_PIN,led_state);
+  board_led_write(led_state != 0);
   led_state = 1 - led_state; // toggle
-#endif
 }

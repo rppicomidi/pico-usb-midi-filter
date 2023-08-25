@@ -99,14 +99,17 @@ chip on an off-the-shelf Raspberry Pi Pico board.
 
 ## Software
 
-This project relies on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk), which
-includes the tinyusb library.
-Because the tinyusb library does not yet support a MIDI host port in the mainline, and because
-it does not have hooks to support device descriptor cloning, you
-need to use my fork of the [tinyusb](https://github.com/hathach/tinyusb) project and
-check out the `pio-midihost` branch. Fortunately, the tinyusb library already incorporates
-the [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) project as a library
-submodule. All instructions below assume that you are using a Linux command line environment
+This project relies on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk),
+which includes the TinyUSB library. At the time of this writing, the Pico SDK version is
+1.5.1, and includes TinyUSB 0.15.0. This project requires a version of TinyUSB
+from 15-Aug-2023 or later or else the USB Host port driver won't install. Also,
+you will need to apply a patch to the TinyUSB library to enable the TinyUSB's Device
+driver to properly clone the control endpoint length field in the USB descriptor.
+Finally, because TinyUSB dropped git submodule support in its newer versions,
+you will need to run a Python 3 script to install the code from the
+[Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) project.
+
+All instructions below assume that you are using a Linux command line environment
 or similar.
 
 ### Set up your development environment
@@ -114,51 +117,60 @@ Before you start trying to build this code, please make sure you have a working 
 environment. See the [Getting Started with
 Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf)
 document for instructions. You will need the `git` command line utility plus other
-development tools.
+development tools. You will also need to have Python 3 installed and in your PATH.
 
 ### Install the project software
-Set your current directory to something appropriate (e.g. $HOME/projects/pico) and then clone the pico-usb-midi-filter project:
+Set your current directory to some project directory `${PROJECTS}`
+(e.g. `${HOME}/projects/pico`) and then clone the pico-usb-midi-filter project:
 
 ```
-cd $HOME/projects/pico
+cd ${PROJECTS}
 git clone https://github.com/rppicomidi/pico-usb-midi-filter.git
 ```
 
-### Installing the forked tinyusb library
+### Updating and patching the TinyUSB library
 
-The Pico SDK uses the main repository for tinyusb as a git submodule. Until the USB Host driver for MIDI is
-incorporated in the main repository for tinyusb, you will need to use my forked version. This is how I do it. The
-instructions have been tested for the case of installing the Pico SDK in `$HOME/projects/pico/pico-sdk`.
+Previous versions of the
+pico-usb-midi-filter project instruct you to use a fork of TinyUSB, which
+can be confusing and hurts compatibility with other projects. If you installed
+the TinyUSB fork previously, please restore the original TinyUSB code before
+attempting to follow the instructions below.
+
+The Pico SDK uses the main repository for TinyUSB as a git submodule. The
+instructions have been tested for the case of installing the Pico SDK in the directory
+`${PICO_SDK_PATH}`, which for me is set to `${HOME}/projects/pico/pico-sdk`.
 
 1. If you have not already done so, follow the instructions for installing the Raspberry Pi Pico SDK in Chapter 2 of the 
 [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf)
 document.
 
-2. Set the working directory to the tinyusb library
+2. Set the working directory to the tinyusb library and get the latest TinyUSB code
 ```
-cd [some directory where you installed the pico SDK]/lib/tinyusb
+cd ${PICO_SDK_PATH}/lib/
+git submodule update tinyusb
+cd tinyusb
+git checkout master
+git pull
 ```
-3. Create an "upstream" remote
+3. Install the `Pico-PIO-USB` library (stay in the `${PICO_SDK_PATH}/lib/tinyusb` directory)
 ```
-git remote add upstream https://github.com/hathach/tinyusb.git
+python3 tools/get_deps.py rp2040
 ```
-4. Change the "origin" remote to point at my fork
+4. Patch TinyUSB (stay in the `${PICO_SDK_PATH}/lib/tinyusb` directory)
 ```
-git remote set-url origin https://github.com/rppicomidi/tinyusb.git
+git checkout -b ep0sz-fn
+git apply ${PROJECTS}/pico-usb-midi-filter/tinyusb_patches/0001-Allow-defining-CFG_TUD_ENDPOINT0_SIZE-as-a-function.patch
+git add -A
+git commit -m 'Allow defining CFG_TUD_ENDPOINT0_SIZE as a function'
 ```
-5. Get the code from my fork into your local repository
+Note: If you need to update TinyUSB in the future, follow these steps
+from the `${PICO_SDK_PATH}/lib/tinyusb` directory to undo the patch:
 ```
-git fetch origin
+git checkout master
+git branch -D ep0sz-fn
+git pull
 ```
-6. Get the midihost branch code branch
-```
-git checkout -b pio-midihost origin/pio-midihost
-```
-7. Get the code from the Pico-PIO-USB project into the tinyusb library source tree as a git submodule
-```
-cd hw/mcu/raspberry_pi
-git submodule update --init Pico-PIO-USB
-```
+Then update TinyUSB and repeat step 4 above to apply the patch again.
 
 ### Building from the command line and loading the Pico software using the file system interface
 

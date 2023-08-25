@@ -66,14 +66,16 @@
 //--------------------------------------------------------------------
 
 #ifdef CFG_TUD_ENDPOINT0_SIZE
-#error "must define CFG_TUD_ENDPOINT0_SIZE here"
+  #error "must define CFG_TUD_ENDPOINT0_SIZE here"
 #else
-extern uint8_t midid_get_endpoint0_size();
-#define CFG_TUD_ENDPOINT0_SIZE    midid_get_endpoint0_size()
-
+  #define CFG_TUD_EP0_SZ_IS_FN 1
+  #define CFG_TUD_ENDPOINT0_MAX 64
+  extern uint8_t midid_get_endpoint0_size();
+  #define CFG_TUD_ENDPOINT0_SIZE    midid_get_endpoint0_size()
 #endif
 
-#define CFG_TUD_MIDI              1
+// Do not use the built-in USB MIDI Device driver
+#define CFG_TUD_MIDI              0
 #define CFG_TUD_MIDI_RX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
 #define CFG_TUD_MIDI_TX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
 
@@ -88,16 +90,11 @@ extern uint8_t midid_get_endpoint0_size();
 #define CFG_TUH_HUB                 1
 // max device support (excluding hub device)
 #define CFG_TUH_DEVICE_MAX          (CFG_TUH_HUB ? 4 : 1) // hub typically has 4 ports
+#define BOARD_TUH_RHPORT            1
 
-#if 0
-#define CFG_TUH_HID                 4
-#define CFG_TUH_HID_EPIN_BUFSIZE    64
-#define CFG_TUH_HID_EPOUT_BUFSIZE   64
-#endif
-
-#define CFG_TUH_MIDI                1
+// Use the app driver for USB MIDI Host
+#define CFG_TUH_MIDI                0
 #define CFG_MIDI_HOST_DEVSTRINGS    1
-
 #ifdef __cplusplus
  }
 #endif
