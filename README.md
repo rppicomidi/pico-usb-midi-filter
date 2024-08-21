@@ -30,7 +30,7 @@ some basic test equipment.
 Also, any brand name stuff I mention in this README file is just documentation of what I did.
 This is not an advertisement. I don't get paid to do this.
 
-This project would not have been possible without the code of the tinyusb project and the
+This project would not have been possible without the code of the TinyUSB project and the
 Pico-PIO-USB project. Thank you to the developers for publishing the source on github.
 
 If you find issues with this document or with the code, please report them on this project's github page.
@@ -38,13 +38,19 @@ If you find issues with this document or with the code, please report them on th
 ## Hardware
 
 This project uses the built-in USB port as the USB downstream MIDI device port (connects to a
-PC's USB host port or an upstream USB hub port). It also uses two GPIO pins, both PIOs and one of
-the ARM cores of the Pico's RP2040 chip to create an upstream USB MIDI host port (connects
+PC's USB host port or an upstream USB hub port). It also uses two GPIO pins, PIO0 and ARM core core1 of the Pico's RP2040 chip to create an upstream USB MIDI host port (connects
 to your MIDI keyboard or other MIDI device). The Pico board and the MIDI device get power from the PC host port
 or upstream USB hub. Because this project uses the on-board USB for MIDI, it can't use it for
 stdio debug prints. This project uses UART0 on pins GP16 (Pico Board pin 21) and GP17 (Pico Board
 pin 22) for the stdio debug UART. If your project needs the debug UART pins for something else, please
 disable the stdio UART in the Cmake file.
+
+If you don't want to make your own hardware from a low-cost Pico board,
+you can configure this project to work with the
+[Adafruit RP2040 Feather with Type A USB Host](https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host)
+board. That board uses GP16 and GP17 for
+the USB Host, GP18 to enable the USB host power supply, and GP0 and GP1 for the UART interface.
+Sadly, this board does not support the RP2040's Single Wire Debug interface.
 
 ### Wiring the USB Host Port
 I used a [Sparkfun CAB-10177](https://www.sparkfun.com/products/10177) with the green and white
@@ -65,7 +71,7 @@ Here is a photo of the top view wiring.
 ![](pictures/pico-usb-midi-filter-top-view.jpg)   
 
 ### Wiring for a Pico Probe
-I like to use a Pico Probe (see Appendix A of the [Getting Started with
+I like to use a Debugprobe (formerly called a picoprobe) (see Appendix A of the [Getting Started with
 Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) guide)
 for code development in a Microsoft Visual Studio Code IDE. I soldered in a 3-pin male header on the
 3 DEBUG pins at the bottom edge of the Pico board. I also soldered a 2-pin male header to pins
@@ -83,8 +89,6 @@ The USB host port hardware created from the PIO is not compliant
 with the USB specification, but it seems to work OK in my experimental setup. The specification
 deviations that I know about are:
 
-- The D+ and D- pins use the on-chip pull-down resistors that can be between 50k and 80k instead
-of the 15k pull-down resistors the USB spec recommends.
 - The D+ and D- pins are wired directly to the I/O pins and don't use termination resistors to match
 the 50 ohm impedance the USB spec recommends. You can try to do better by adding in-line
 resistors as described above.
@@ -98,26 +102,15 @@ values to fix termination issues given you can't easily place resistors close to
 chip on an off-the-shelf Raspberry Pi Pico board.
 
 ## Software
-
 This project relies on the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk),
-which includes the TinyUSB library. At the time of this writing, the Pico SDK version is
-1.5.1, and includes TinyUSB 0.15.0. This project requires a version of TinyUSB
-from 15-Aug-2023 or later or else the USB Host port driver won't install. Also,
-you will need to apply a patch to the TinyUSB library to enable the TinyUSB's Device
-driver to properly clone the control endpoint length field in the USB descriptor.
-Finally, because TinyUSB dropped git submodule support in its newer versions,
-you will need to run a Python 3 script to install the code from the
-[Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) project.
+which includes the TinyUSB library. For best results, please use version 2.0 or later
+of the Pico SDK. This project can work with version 1.5.1 of the Pico SDK with some tweaks.
 
-All instructions below assume that you are using a Linux command line environment
-or similar.
+This project also relies on the TinyUSB library and usb_midi_host library.
 
-### Set up your development environment
-Before you start trying to build this code, please make sure you have a working development
-environment. See the [Getting Started with
-Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf)
-document for instructions. You will need the `git` command line utility plus other
-development tools. You will also need to have Python 3 installed and in your PATH.
+### Special Development Environment Setup
+As of this writing, the Pico SDK version 2.0 needs some adjustment
+before it will work with this project. Follow first the instructions [here](https://github.com/rppicomidi/usb_midi_host/blob/main/README.md#building-cc-applications). You can ignore the section called `Building the usb_midi_host Library in Your Project`.
 
 ### Install the project software
 Set your current directory to some project directory `${PROJECTS}`
@@ -128,39 +121,16 @@ cd ${PROJECTS}
 git clone https://github.com/rppicomidi/pico-usb-midi-filter.git
 ```
 
-### Updating and patching the TinyUSB library
-
-Previous versions of the
-pico-usb-midi-filter project instruct you to use a fork of TinyUSB, which
-can be confusing and hurts compatibility with other projects. If you installed
-the TinyUSB fork previously, please restore the original TinyUSB code before
-attempting to follow the instructions below.
-
-The Pico SDK uses the main repository for TinyUSB as a git submodule. The
-instructions have been tested for the case of installing the Pico SDK in the directory
-`${PICO_SDK_PATH}`, which for me is set to `${HOME}/projects/pico/pico-sdk`.
-
-1. If you have not already done so, follow the instructions for installing the Raspberry Pi Pico SDK in Chapter 2 of the 
-[Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf)
-document.
-
-2. Set the working directory to the tinyusb library and get the latest TinyUSB code
-```
-cd ${PICO_SDK_PATH}/lib/
-git submodule update tinyusb
-cd tinyusb
-git checkout master
-git pull
-```
-3. Install the `Pico-PIO-USB` library (stay in the `${PICO_SDK_PATH}/lib/tinyusb` directory)
-```
-python3 tools/get_deps.py rp2040
-```
-4. Patch TinyUSB (stay in the `${PICO_SDK_PATH}/lib/tinyusb` directory)
+### Patching the TinyUSB library
+TinyUSB has a few checks in it that break the ability of the USB Device
+driver to copy the USB descriptor from the device plugged to the USB host
+port. The project code will not build unless you apply these patches.
+Because this is special purpose, I suggest you apply the patches in
+a branch of the TinyUSB git submodule:
 ```
 git checkout -b ep0sz-fn
 git apply ${PROJECTS}/pico-usb-midi-filter/tinyusb_patches/0001-Allow-defining-CFG_TUD_ENDPOINT0_SIZE-as-a-function.patch
-git add -A
+git add src/
 git commit -m 'Allow defining CFG_TUD_ENDPOINT0_SIZE as a function'
 ```
 Note: If you need to update TinyUSB in the future, follow these steps
@@ -170,7 +140,7 @@ git checkout master
 git branch -D ep0sz-fn
 git pull
 ```
-Then update TinyUSB and repeat step 4 above to apply the patch again.
+Then update TinyUSB and repeat the patching process above.
 
 ### Building from the command line and loading the Pico software using the file system interface
 
@@ -184,47 +154,21 @@ cd build
 cmake ..
 make
 ```
-This process should generate the file `pico-usb-midi-filter\build\midi_app.uf2`.
+This process should generate the file `pico-usb-midi-filter\build\pico_usb_midi_filter.uf2`.
 Connect a USB cable to your PC. Do not connect it to your Pico board yet.
 Hold the BOOTSEL button on your Pico board and plug the cable to your Pico board's microUSB
 connector. The Pico should automount on your computer. Use the PC file manager to drag and
-drop the ``pico-usb-midi-filter.uf2` file to the Pico "file system". The Pico should
+drop the `pico-usb-midi-filter.uf2` file to the Pico "file system". The Pico should
 automatically unmount when the file copy is complete.
 
 ### Building and debugging using VS Code and the Pico Probe
+If you are using the Raspberry Pi Pico VS Extension for VS Code, click
+the Pico icon on the left toolbar and import this project. If you are using
+an older setup, the hidden `.vscode` directory will configure the project for
+VS Code if you use the file menu to open this project folder.
 
-These instructions apply for Ubuntu Linux. Before you use VS Code with this project the first time, open a terminal
-window and type the following commands:
-
-```
-cd [the parent directory where you cloned this project]/
-mkdir build
-cd build
-touch compile_commands.json
-```
-
-This project already includes a hidden `.vscode` directory that does
-most of the heavy lifting for setting up the project for VS Code. I connect the Pico Probe's microUSB to the host PC via an external hub and and then I connect target Pico board's microUSB directly to the PC. For
-reasons I can't explain, debug does not seem to work correctly otherwise.
-
-I have the pico-sdk installed in $HOME/projects/pico/pico-sdk. I set up the environment using this script from the command line (I am using Ubuntu Linux that uses gnome-terminal):
-
-```
-#!/bin/sh
-export PICO_SDK_PATH=$HOME/projects/pico/pico-sdk/
-gnome-terminal -- openocd -f interface/picoprobe.cfg -f target/rp2040.cfg
-gnome-terminal -- minicom -D /dev/ttyACM0 -b 115200
-```
-
-The first line after the shebang sets PICO_SDK_PATH so that the build works correctly. The first `gnome-terminal` command opens a new terminal window and runs the openocd server that talks to the Pico Probe. The second `gnome-terminal` command opens a minicom serial port console window.
-
-Finally, from the original terminal where I ran this script I start VS Code using this command.
-
-```
-code
-```
-
-When VS Code launches, File->Open Folder... and choose the directory where you installed the pico-usb-midi-filter project. You will have to choose the arm-none-eabi-gcc compiler. Now you should be able to build and run this code as described in Chapter 7 of the 
+Once you have successfully imported or opened this project, you should
+be able to build and run the code by following the instructions in the
 [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) document.
 
 ## Testing
