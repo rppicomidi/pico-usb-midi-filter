@@ -22,6 +22,7 @@
     "files.associations": {
         "limits": "c",
         "new": "c",
-        "midi_filter.h": "c"
+        "midi_filter.h": "c",
+        "clocks.h": "c"
     }
 }

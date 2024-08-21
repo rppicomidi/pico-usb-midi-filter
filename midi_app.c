@@ -43,7 +43,7 @@
 #include "pico/multicore.h"
 #include "pico/bootrom.h"
 #include "hardware/watchdog.h"
-
+#include "hardware/clocks.h"
 #include "pio_usb.h"
 
 #include "tusb.h"
