@@ -22,12 +22,7 @@ filtering. That is, this code should serve as a reasonable starting point for ot
 - Changing MIDI channel for notes in a range (to perform keyboard split, for example).
 - etc.
 
-This project requires correctly soldering a USB host port connector to a Raspberry Pi Pico board. 
-The circuit described here has no current limiting, ESD protection, or other safeguards. Measure voltages carefully and
-please don't hook this to your expensive computer and MIDI equipment until you have done some testing with at least
-some basic test equipment.
-
-Also, any brand name stuff I mention in this README file is just documentation of what I did.
+Any brand name stuff I mention in this README file is just documentation of what I did.
 This is not an advertisement. I don't get paid to do this.
 
 This project would not have been possible without the code of the TinyUSB project and the
@@ -35,22 +30,32 @@ Pico-PIO-USB project. Thank you to the developers for publishing the source on g
 
 If you find issues with this document or with the code, please report them on this project's github page.
 
+Note that this project may not work well for if you operate it in a noisy environment.
+The Pico-PIO-USB PIO program does not implement a differential receiver. It only samples
+the USB D+ pin. Also, if your project requires USB-IF certification, this project won't work for you.
+
 ## Hardware
 
-This project uses the built-in USB port as the USB downstream MIDI device port (connects to a
-PC's USB host port or an upstream USB hub port). It also uses two GPIO pins, PIO0 and ARM core core1 of the Pico's RP2040 chip to create an upstream USB MIDI host port (connects
-to your MIDI keyboard or other MIDI device). The Pico board and the MIDI device get power from the PC host port
-or upstream USB hub. Because this project uses the on-board USB for MIDI, it can't use it for
-stdio debug prints. This project uses UART0 on pins GP16 (Pico Board pin 21) and GP17 (Pico Board
-pin 22) for the stdio debug UART. If your project needs the debug UART pins for something else, please
+This project uses the RP2040's built-in USB port as the USB downstream MIDI device port (connects to a
+PC's USB host port or an upstream USB hub port). It also uses two GPIO pins, PIO0 and ARM core core1 of the RP2040
+ to create an upstream USB MIDI host port (connects
+to your MIDI keyboard or other MIDI device). The circuit board and the MIDI device get power from the PC host port
+or upstream USB hub. Because this project uses the RP2040's on-board USB for MIDI, it can't use it for
+stdio debug prints. This project uses UART0 for the stdio debug UART. If your project needs the debug UART pins for something else, please
 disable the stdio UART in the Cmake file.
 
-If you don't want to make your own hardware from a low-cost Pico board,
+The Pico board circuit described here has no current limiting, ESD protection, or other safeguards. Measure voltages carefully and
+please don't hook this to your expensive computer and MIDI equipment until you have done some testing with at least
+some basic test equipment. It uses GP0 and GP1 (Pico board pins 1 and 2) for USB host D+ and D-, and it uses pins GP16
+(Pico Board pin 21) and GP17 (Pico Board pin 22) for the debug UART0 I/O. The LED is on RP2040 GP25.
+
+If you don't want to make your own hardware from a Pico board and want a bit more robust circuit,
 you can configure this project to work with the
 [Adafruit RP2040 Feather with Type A USB Host](https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host)
 board. That board uses GP16 and GP17 for
-the USB Host, GP18 to enable the USB host power supply, and GP0 and GP1 for the UART interface.
-Sadly, this board does not support the RP2040's Single Wire Debug interface.
+the USB Host, GP18 to enable the USB host power supply, and GP0 and GP1 for the UART interface. The LED is on GP13.
+Sadly, this board does not support the RP2040's Single Wire Debug interface. Skip to the [Software](#software) section
+if you are using this board.
 
 ### Wiring the USB Host Port
 I used a [Sparkfun CAB-10177](https://www.sparkfun.com/products/10177) with the green and white
@@ -92,7 +97,7 @@ deviations that I know about are:
 - The D+ and D- pins are wired directly to the I/O pins and don't use termination resistors to match
 the 50 ohm impedance the USB spec recommends. You can try to do better by adding in-line
 resistors as described above.
-- The USB port receiver is not differential. The software that decodes the USB signaling only uses
+- As mentioned, the USB port receiver is not differential. The software that decodes the USB signaling only uses
 the D+ signal to decode the NRZI signal.
 - I wired in no current limiting for the USB host port Vbus supply. It relies on the current limiting
 from the upstream PC's USB host that supplies power to the Pico board.
@@ -154,6 +159,12 @@ cd build
 cmake ..
 make
 ```
+To make a version of code for the Adafruit RP2040 Feather With USB Type A Host board
+or a circuit with similar GPIO pin usage, replace `cmake ..` with
+```
+cmake -DRPPICOMIDI_FEATHER_USBHOST=1 ..
+```
+
 This process should generate the file `pico-usb-midi-filter\build\pico_usb_midi_filter.uf2`.
 Connect a USB cable to your PC. Do not connect it to your Pico board yet.
 Hold the BOOTSEL button on your Pico board and plug the cable to your Pico board's microUSB
@@ -165,7 +176,19 @@ automatically unmount when the file copy is complete.
 If you are using the Raspberry Pi Pico VS Extension for VS Code, click
 the Pico icon on the left toolbar and import this project. If you are using
 an older setup, the hidden `.vscode` directory will configure the project for
-VS Code if you use the file menu to open this project folder.
+VS Code if you use the file menu to open this project folder as long as the
+environment variable `PICO_SDK_PATH` points to the `pico-sdk` directory and
+the build toolchain is in your `PATH` environment variable.
+
+To make a version of code for the Adafruit RP2040 Feather With USB Type A Host board
+or a circuit with similar GPIO pin usage, before launching VS Code, set the `RPPICOMIDI_FEATHER_USBHOST`
+environment variable to 1.
+For Linux:
+```
+export RPPICOMIDI_FEATHER_USBHOST=1
+```
+
+`cmake -DUSE_ADAFRUIT_FEATHER_RP2040_USBHOST=1 ..` should suffice.
 
 Once you have successfully imported or opened this project, you should
 be able to build and run the code by following the instructions in the
