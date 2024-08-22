@@ -4,14 +4,8 @@ project(pico_usb_midi_filter)
 # To use with the Adafruit RP2040 Feather with Type A Host board (see
 # https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host)
 # or a compatible circuit, either set the environment variable
-# RPPICOMIDI_FEATHER_USBHOST to 1 or run cmake from the build directory as
-# cmake -RPPICOMIDI_FEATHER_USBHOST=1 ..
-if (DEFINED ENV{RPPICOMIDI_FEATHER_USBHOST})
-set(RPPICOMIDI_FEATHER_USBHOST $ENV{RPPICOMIDI_FEATHER_USBHOST})
-endif()
-if (NOT DEFINED RPPICOMIDI_FEATHER_USBHOST)
-set (RPPICOMIDI_FEATHER_USBHOST 0)
-endif()
+# PICO_BOARD to adafruit_feather_rp2040_usb_host or run cmake from the build directory as
+# cmake -DPICO_BOARD=adafruit_feather_rp2040_usb_host ..
 pico_sdk_init()
 
 add_executable(pico_usb_midi_filter)
@@ -28,14 +22,13 @@ target_sources(pico_usb_midi_filter PRIVATE
  )
 target_link_options(pico_usb_midi_filter PRIVATE -Xlinker --print-memory-usage)
 target_compile_options(pico_usb_midi_filter PRIVATE -Wall -Wextra)
-if (${RPPICOMIDI_FEATHER_USBHOST})
-message("board is Adafruit RP2040 Feather with USB Type A Host")
+if (${PICO_BOARD} MATCHES adafruit_feather_rp2040_usb_host)
+message("Set PIO defaults for Adafruit RP2040 Feather with USB Type A Host")
 target_compile_definitions(pico_usb_midi_filter PRIVATE
-PICO_DEFAULT_LED_PIN=13
 USE_ADAFRUIT_FEATHER_RP2040_USBHOST=1
 )
 else()
-message("board is pico: unused GP22 will be driven high")
+message("Set PIO defaults for Pico board; unused GP22 will be driven high")
 target_compile_definitions(pico_usb_midi_filter PRIVATE
 PICO_DEFAULT_UART_TX_PIN=16
 PICO_DEFAULT_UART_RX_PIN=17

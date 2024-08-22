@@ -43,7 +43,6 @@
 #include "pico/multicore.h"
 #include "pico/bootrom.h"
 #include "hardware/watchdog.h"
-#include "hardware/clocks.h"
 #include "pio_usb.h"
 
 #include "tusb.h"
@@ -173,12 +172,7 @@ void device_clone_complete_cb()
 
 // core0: handle device events
 int main(void) {
-  // default 125MHz is not appropreate. Sysclock should be multiple of 12MHz.
-  set_sys_clock_khz(120000, true);
-
-  sleep_ms(10);
-
-  // direct printf to UART
+  // set up board clocks, UART pins, PIO Pins
   board_init();
 
   multicore_reset_core1();

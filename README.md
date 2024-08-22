@@ -162,7 +162,7 @@ make
 To make a version of code for the Adafruit RP2040 Feather With USB Type A Host board
 or a circuit with similar GPIO pin usage, replace `cmake ..` with
 ```
-cmake -DRPPICOMIDI_FEATHER_USBHOST=1 ..
+cmake -DPICO_BOARD=adafruit_feather_rp2040_usb_host ..
 ```
 
 This process should generate the file `pico-usb-midi-filter\build\pico_usb_midi_filter.uf2`.
