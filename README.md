@@ -164,7 +164,10 @@ or a circuit with similar GPIO pin usage, replace `cmake ..` with
 ```
 cmake -DPICO_BOARD=adafruit_feather_rp2040_usb_host ..
 ```
-
+If the board is a Pico board but you are wiring the USB Host pins like the Feather board, use
+```
+cmake -DPICO_BOARD=pico -DUSE_ADAFRUIT_FEATHER_RP2040_USBHOST=1 ..
+```
 This process should generate the file `pico-usb-midi-filter\build\pico_usb_midi_filter.uf2`.
 Connect a USB cable to your PC. Do not connect it to your Pico board yet.
 Hold the BOOTSEL button on your Pico board and plug the cable to your Pico board's microUSB
@@ -180,15 +183,11 @@ VS Code if you use the file menu to open this project folder as long as the
 environment variable `PICO_SDK_PATH` points to the `pico-sdk` directory and
 the build toolchain is in your `PATH` environment variable.
 
-To make a version of code for the Adafruit RP2040 Feather With USB Type A Host board
-or a circuit with similar GPIO pin usage, before launching VS Code, set the `RPPICOMIDI_FEATHER_USBHOST`
-environment variable to 1.
-For Linux:
-```
-export RPPICOMIDI_FEATHER_USBHOST=1
-```
-
-`cmake -DUSE_ADAFRUIT_FEATHER_RP2040_USBHOST=1 ..` should suffice.
+To make a version of code for the Adafruit RP2040 Feather With USB Type A Host board,
+set the `PICO_BOARD` CMake variable as described in the [usb_midi_host README](https://github.com/rppicomidi/usb_midi_host?tab=readme-ov-file#vs-code-build).
+If the board is a Pico board but you are wiring the USB Host pins like the Feather board,
+set `-DPICO_BOARD=pico` and add another item `-DUSE_ADAFRUIT_FEATHER_RP2040_USBHOST=1`
+using the pre-0.15.2 Pico VS Code extension workflow.
 
 Once you have successfully imported or opened this project, you should
 be able to build and run the code by following the instructions in the
